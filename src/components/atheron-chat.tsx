@@ -1,282 +1,401 @@
 "use client";
 
-import { ReactNode } from "react";
+import { useRef, useEffect, useState } from "react";
 import {
     ThreadPrimitive,
     ComposerPrimitive,
     MessagePrimitive,
-    useComposerRuntime,
 } from "@assistant-ui/react";
-import { ArrowRight, Sparkles, Atom, Dna, Calculator, FlaskConical, Cpu, RotateCcw } from "lucide-react";
+import { ArrowRight, Sparkles, RotateCcw, X, ExternalLink, Copy, Share2, Download, RefreshCw, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
 
-const SAMPLE_QUESTIONS = [
-    {
-        icon: Atom,
-        text: "Explain quantum entanglement and its implications",
-        category: "Physics",
-    },
-    {
-        icon: Dna,
-        text: "How does CRISPR gene editing work?",
-        category: "Biology",
-    },
-    {
-        icon: Calculator,
-        text: "What is the Riemann Hypothesis?",
-        category: "Mathematics",
-    },
-    {
-        icon: FlaskConical,
-        text: "Explain the structure of carbon nanotubes",
-        category: "Chemistry",
-    },
-    {
-        icon: Cpu,
-        text: "How do neural networks learn?",
-        category: "Computer Science",
-    },
-];
+// ============ TYPES ============
+interface Source {
+    domain: string;
+    title: string;
+    url: string;
+    description: string;
+}
 
-// Custom Markdown renderer with LaTeX support
-function MarkdownRenderer({ content }: { content: string }) {
+// ============ VIDEO BACKGROUND ============
+function VideoBackground() {
+    const videoRef = useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        const video = videoRef.current;
+        if (!video) return;
+
+        const handleTimeUpdate = () => {
+            if (video.currentTime >= 7) {
+                video.currentTime = 0;
+            }
+        };
+
+        video.addEventListener("timeupdate", handleTimeUpdate);
+        video.play().catch(() => { });
+
+        return () => video.removeEventListener("timeupdate", handleTimeUpdate);
+    }, []);
+
     return (
-        <ReactMarkdown
-            remarkPlugins={[remarkMath, remarkGfm]}
-            rehypePlugins={[rehypeKatex]}
-            components={{
-                h1: ({ children }) => (
-                    <h1 className="text-2xl font-bold text-[#f5f5f5] mt-6 mb-3 first:mt-0">
-                        {children}
-                    </h1>
-                ),
-                h2: ({ children }) => (
-                    <h2 className="text-xl font-semibold text-[#f5f5f5] mt-5 mb-2">
-                        {children}
-                    </h2>
-                ),
-                h3: ({ children }) => (
-                    <h3 className="text-lg font-semibold text-[#f5f5f5] mt-4 mb-2">
-                        {children}
-                    </h3>
-                ),
-                p: ({ children }) => (
-                    <p className="text-[#e0e0e0] leading-relaxed mb-4 last:mb-0">
-                        {children}
-                    </p>
-                ),
-                ul: ({ children }) => (
-                    <ul className="list-disc space-y-1 mb-4 text-[#e0e0e0] pl-6">
-                        {children}
-                    </ul>
-                ),
-                ol: ({ children }) => (
-                    <ol className="list-decimal space-y-1 mb-4 text-[#e0e0e0] pl-6">
-                        {children}
-                    </ol>
-                ),
-                li: ({ children }) => (
-                    <li className="text-[#e0e0e0]">{children}</li>
-                ),
-                a: ({ href, children }) => (
-                    <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#20b8cd] hover:underline"
-                    >
-                        {children}
-                    </a>
-                ),
-                code: ({ className, children }) => {
-                    const isInline = !className;
-                    if (isInline) {
-                        return (
-                            <code className="bg-[#2a2a2a] text-[#20b8cd] px-1.5 py-0.5 rounded text-sm font-mono">
-                                {children}
-                            </code>
-                        );
-                    }
-                    return (
-                        <code className="text-[#f5f5f5] text-sm font-mono">{children}</code>
-                    );
-                },
-                pre: ({ children }) => (
-                    <pre className="bg-[#242424] border border-[#3a3a3a] rounded-lg p-4 overflow-x-auto mb-4 text-sm">
-                        {children}
-                    </pre>
-                ),
-                blockquote: ({ children }) => (
-                    <blockquote className="border-l-4 border-[#20b8cd] pl-4 italic text-[#a0a0a0] mb-4">
-                        {children}
-                    </blockquote>
-                ),
-                table: ({ children }) => (
-                    <div className="overflow-x-auto mb-4 rounded-lg border border-[#3a3a3a]">
-                        <table className="min-w-full">
-                            {children}
-                        </table>
-                    </div>
-                ),
-                thead: ({ children }) => (
-                    <thead className="bg-[#242424]">{children}</thead>
-                ),
-                tbody: ({ children }) => <tbody className="bg-[#1e1e1e]">{children}</tbody>,
-                tr: ({ children }) => (
-                    <tr className="border-b border-[#3a3a3a] last:border-b-0">{children}</tr>
-                ),
-                th: ({ children }) => (
-                    <th className="px-4 py-3 text-left text-[#f5f5f5] font-semibold text-sm">
-                        {children}
-                    </th>
-                ),
-                td: ({ children }) => (
-                    <td className="px-4 py-3 text-[#e0e0e0] text-sm">{children}</td>
-                ),
-                hr: () => <hr className="border-[#3a3a3a] my-6" />,
-                strong: ({ children }) => (
-                    <strong className="font-semibold text-[#f5f5f5]">{children}</strong>
-                ),
-                em: ({ children }) => (
-                    <em className="italic text-[#e0e0e0]">{children}</em>
-                ),
-            }}
-        >
-            {content}
-        </ReactMarkdown>
+        <div className="video-bg-container">
+            <video ref={videoRef} autoPlay muted loop playsInline className="video-bg">
+                <source src="/background.mp4" type="video/mp4" />
+            </video>
+            <div className="video-overlay" />
+        </div>
     );
 }
 
-function WelcomeScreen() {
-    const composer = useComposerRuntime();
+// ============ TYPEWRITER TEXT ============
+function TypewriterText({ text }: { text: string }) {
+    const [displayText, setDisplayText] = useState("");
+    const [cursorVisible, setCursorVisible] = useState(true);
 
-    const handleQuestionClick = (question: string) => {
-        composer.setText(question);
-        setTimeout(() => {
-            composer.send();
-        }, 50);
-    };
+    useEffect(() => {
+        let index = 0;
+        const timer = setTimeout(() => {
+            const interval = setInterval(() => {
+                if (index <= text.length) {
+                    setDisplayText(text.slice(0, index));
+                    index++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 80);
+        }, 600);
+        return () => clearTimeout(timer);
+    }, [text]);
+
+    useEffect(() => {
+        const interval = setInterval(() => setCursorVisible(v => !v), 530);
+        return () => clearInterval(interval);
+    }, []);
 
     return (
-        <div className="flex h-full w-full items-center justify-center px-4">
-            <div className="flex w-full max-w-[42rem] flex-col gap-8">
-                {/* Logo and Branding */}
-                <div className="flex flex-col gap-3">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#20b8cd] to-[#1aa3b5] flex items-center justify-center">
-                            <Sparkles className="w-6 h-6 text-[#1a1a1a]" />
-                        </div>
-                        <div>
-                            <span className="text-2xl font-semibold text-[#20b8cd]">Atheron</span>
-                            <p className="text-xs text-[#808080]">STEM Research Assistant • Powered by Groq</p>
-                        </div>
+        <>
+            <span className="text-[#483AA0]">{displayText}</span>
+            <span style={{ opacity: cursorVisible ? 1 : 0, color: '#483AA0' }}>|</span>
+        </>
+    );
+}
+
+// ============ PARSE SOURCES FROM CONTENT ============
+function parseSourcesFromContent(content: string): { cleanContent: string; sources: Source[] } {
+    const sourcesMatch = content.match(/<!-- SOURCES_START -->([\s\S]*?)<!-- SOURCES_END -->/);
+
+    if (!sourcesMatch) {
+        return { cleanContent: content, sources: [] };
+    }
+
+    try {
+        const sourcesJson = sourcesMatch[1].trim();
+        const sources = JSON.parse(sourcesJson) as Source[];
+        const cleanContent = content.replace(/<!-- SOURCES_START -->[\s\S]*?<!-- SOURCES_END -->/g, '').trim();
+        return { cleanContent, sources };
+    } catch (e) {
+        return { cleanContent: content, sources: [] };
+    }
+}
+
+// ============ SOURCES PANEL ============
+function SourcesPanel({ sources, onClose }: { sources: Source[]; onClose: () => void }) {
+    return (
+        <div className="sources-overlay" onClick={onClose}>
+            <div className="sources-panel" onClick={e => e.stopPropagation()}>
+                <div className="sources-header">
+                    <div className="sources-header-title">
+                        <Sparkles className="w-4 h-4 text-[#20b8cd]" />
+                        <span>{sources.length} sources</span>
                     </div>
-                    <p className="text-4xl md:text-5xl font-light text-[#f5f5f5] leading-tight">
-                        What do you want to know?
+                    <button onClick={onClose} className="sources-close-btn">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+                <div className="sources-list">
+                    {sources.map((source, i) => (
+                        <a
+                            key={i}
+                            href={source.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="source-item"
+                        >
+                            <div className="source-icon">
+                                <img
+                                    src={`https://www.google.com/s2/favicons?domain=${source.domain}&sz=32`}
+                                    alt=""
+                                    className="w-4 h-4"
+                                    onError={(e) => {
+                                        (e.target as HTMLImageElement).style.display = 'none';
+                                    }}
+                                />
+                            </div>
+                            <div className="source-content">
+                                <span className="source-domain">{source.domain}</span>
+                                <span className="source-title">{source.title}</span>
+                                <span className="source-desc">{source.description}</span>
+                            </div>
+                            <ExternalLink className="w-4 h-4 text-gray-500 flex-shrink-0" />
+                        </a>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============ SOURCES BUTTON ============
+function SourcesButton({ sources }: { sources: Source[] }) {
+    const [showPanel, setShowPanel] = useState(false);
+
+    if (sources.length === 0) return null;
+
+    return (
+        <>
+            <button
+                onClick={() => setShowPanel(true)}
+                className="sources-button"
+            >
+                <div className="sources-icons">
+                    {sources.slice(0, 3).map((source, i) => (
+                        <img
+                            key={i}
+                            src={`https://www.google.com/s2/favicons?domain=${source.domain}&sz=32`}
+                            alt=""
+                            className="source-favicon"
+                            style={{ marginLeft: i > 0 ? '-6px' : '0', zIndex: 3 - i }}
+                        />
+                    ))}
+                </div>
+                <span>{sources.length} sources</span>
+            </button>
+            {showPanel && <SourcesPanel sources={sources} onClose={() => setShowPanel(false)} />}
+        </>
+    );
+}
+
+// ============ MARKDOWN RENDERER ============
+function MarkdownContent({ content, onSourcesParsed }: { content: string; onSourcesParsed?: (sources: Source[]) => void }) {
+    const { cleanContent, sources } = parseSourcesFromContent(content);
+    const hasReportedSources = useRef(false);
+
+    useEffect(() => {
+        if (onSourcesParsed && sources.length > 0 && !hasReportedSources.current) {
+            hasReportedSources.current = true;
+            onSourcesParsed(sources);
+        }
+    }, [sources.length, onSourcesParsed]);
+
+    if (!cleanContent) {
+        return (
+            <div className="loading-message">
+                Hold on tight, travelling at the speed of light...
+            </div>
+        );
+    }
+
+    return (
+        <div className="markdown-content">
+            <ReactMarkdown
+                remarkPlugins={[remarkMath, remarkGfm]}
+                rehypePlugins={[rehypeKatex]}
+            >
+                {cleanContent}
+            </ReactMarkdown>
+        </div>
+    );
+}
+
+// ============ LOGO HEADER ============
+function LogoHeader() {
+    return (
+        <a
+            href="https://atheron.onrender.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
+        >
+            <img
+                src="/logo.jpeg"
+                alt="Athey"
+                className="w-10 h-10 rounded-xl object-cover"
+            />
+            <span className="font-editorial text-xl font-medium text-white">
+                Athey
+            </span>
+        </a>
+    );
+}
+
+// ============ NEW CHAT BUTTON ============
+function NewChatButton() {
+    return (
+        <button
+            onClick={() => window.location.reload()}
+            className="p-2.5 rounded-xl bg-[#202222] border border-[#313333] text-gray-400 hover:text-[#20b8cd] hover:border-[#20b8cd]/50 transition-all"
+            title="New Chat"
+        >
+            <RotateCcw className="w-5 h-5" />
+        </button>
+    );
+}
+
+// ============ WELCOME SCREEN ============
+function WelcomeScreen() {
+    return (
+        <div className="welcome-screen">
+            <div className="welcome-content">
+                <div className="mb-6 md:mb-8 text-left">
+                    <p className="text-3xl md:text-5xl lg:text-6xl font-light text-white leading-tight">
+                        What do you want to
                     </p>
-                    <p className="text-lg text-[#808080]">
-                        Ask any STEM question. Get answers with research paper references.
+                    <p className="text-3xl md:text-5xl lg:text-6xl font-light leading-tight whitespace-nowrap">
+                        <span className="text-white">know? </span><TypewriterText text="in the cosmos" />
                     </p>
                 </div>
 
-                {/* Input */}
-                <ComposerPrimitive.Root className="flex items-center gap-2 p-2 rounded-2xl border border-[#3a3a3a] bg-[#242424] transition-all shadow-lg">
+                <ComposerPrimitive.Root className="input-container">
                     <ComposerPrimitive.Input
-                        placeholder="Ask anything about science, technology, engineering, or mathematics..."
-                        className="flex-1 min-h-[48px] px-4 py-3 bg-transparent text-[#f5f5f5] text-lg placeholder:text-[#808080] focus:outline-none resize-none"
+                        placeholder="Ask anything about space..."
+                        className="input-field"
                     />
-                    <ComposerPrimitive.Send className="flex-shrink-0 w-12 h-12 rounded-xl bg-[#20b8cd] text-[#1a1a1a] hover:bg-[#1aa3b5] transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                    <ComposerPrimitive.Send className="send-button">
                         <ArrowRight className="w-5 h-5" />
                     </ComposerPrimitive.Send>
                 </ComposerPrimitive.Root>
-
-                {/* Sample Questions */}
-                <div className="flex flex-col gap-3">
-                    <p className="text-sm text-[#808080]">Try asking about:</p>
-                    <div className="flex flex-wrap gap-2">
-                        {SAMPLE_QUESTIONS.map((question, index) => (
-                            <button
-                                key={index}
-                                onClick={() => handleQuestionClick(question.text)}
-                                className="group flex items-center gap-2 px-4 py-2 rounded-full border border-[#3a3a3a] bg-[#242424] hover:border-[#20b8cd]/50 hover:bg-[#2a2a2a] transition-all"
-                            >
-                                <question.icon className="w-4 h-4 text-[#20b8cd]" />
-                                <span className="text-sm text-[#a0a0a0] group-hover:text-[#f5f5f5] transition-colors">
-                                    {question.category}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Disclaimer */}
-                <p className="text-xs text-[#606060] text-center">
-                    ⚠️ AI-generated content. Please verify research paper links before citing.
-                </p>
             </div>
         </div>
     );
 }
 
+// ============ USER MESSAGE - RIGHT ALIGNED ============
 function UserMessage() {
     return (
-        <div className="max-w-[42rem] mx-auto py-4">
-            <div className="flex justify-end">
-                <div className="max-w-[70%] px-5 py-3 rounded-2xl bg-[#3a3a3a] text-[#f5f5f5]">
-                    <MessagePrimitive.Content />
+        <div className="user-message-wrapper">
+            <div className="message-container">
+                <div className="user-message-row">
+                    <div className="user-message-bubble">
+                        <MessagePrimitive.Content />
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-// Custom Text component that renders markdown
-function TextPart({ text }: { text: string }) {
-    return <MarkdownRenderer content={text || ""} />;
+// ============ ASSISTANT MESSAGE - LEFT ALIGNED ============
+function TextPartWithSources({ text, onSourcesParsed }: { text: string; onSourcesParsed: (sources: Source[]) => void }) {
+    return <MarkdownContent content={text} onSourcesParsed={onSourcesParsed} />;
+}
+// ============ ACTION BUTTONS ============
+function ActionButtons({ content, sources }: { content: string; sources: Source[] }) {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        const { cleanContent } = parseSourcesFromContent(content);
+        await navigator.clipboard.writeText(cleanContent);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleShare = async () => {
+        const { cleanContent } = parseSourcesFromContent(content);
+        if (navigator.share) {
+            await navigator.share({ text: cleanContent });
+        } else {
+            handleCopy();
+        }
+    };
+
+    return (
+        <div className="action-bar">
+            <div className="action-buttons-left">
+                <button onClick={handleCopy} className="action-btn" title="Copy">
+                    {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                </button>
+                <button onClick={handleShare} className="action-btn" title="Share">
+                    <Share2 className="w-4 h-4" />
+                </button>
+                <button className="action-btn" title="Download" onClick={() => {
+                    const { cleanContent } = parseSourcesFromContent(content);
+                    const blob = new Blob([cleanContent], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'athey-response.txt';
+                    a.click();
+                }}>
+                    <Download className="w-4 h-4" />
+                </button>
+                <button className="action-btn" title="Regenerate" onClick={() => window.location.reload()}>
+                    <RefreshCw className="w-4 h-4" />
+                </button>
+            </div>
+            <div className="action-buttons-right">
+                {sources.length > 0 && <SourcesButton sources={sources} />}
+            </div>
+        </div>
+    );
 }
 
 function AssistantMessage() {
+    const [sources, setSources] = useState<Source[]>([]);
+    const contentRef = useRef("");
+    const sourcesRef = useRef<Source[]>([]);
+
+    // Memoize callback to prevent infinite loops
+    const handleSourcesParsed = (newSources: Source[]) => {
+        if (newSources.length > 0 && sourcesRef.current.length === 0) {
+            sourcesRef.current = newSources;
+            setSources(newSources);
+        }
+    };
+
     return (
-        <div className="py-6 border-b border-[#2a2a2a]">
-            <div className="max-w-[42rem] mx-auto">
-                {/* Answer Header */}
-                <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold text-[#20b8cd]">
-                    <Sparkles className="w-5 h-5" />
-                    Answer
-                </h2>
-                {/* Content with custom markdown rendering */}
-                <MessagePrimitive.Content components={{ Text: TextPart }} />
+        <div className="assistant-message-wrapper">
+            <div className="message-container">
+                <div className="assistant-message-content">
+                    <div className="answer-header">
+                        <Sparkles className="w-4 h-4" />
+                        <span>Answer</span>
+                    </div>
+                    <MessagePrimitive.Content
+                        components={{
+                            Text: ({ text }) => {
+                                contentRef.current = text;
+                                return <TextPartWithSources text={text} onSourcesParsed={handleSourcesParsed} />;
+                            }
+                        }}
+                    />
+                    <ActionButtons content={contentRef.current} sources={sources} />
+                </div>
             </div>
         </div>
     );
 }
 
+// ============ MESSAGES ============
 function Messages() {
-    return (
-        <ThreadPrimitive.Messages
-            components={{
-                UserMessage,
-                AssistantMessage,
-            }}
-        />
-    );
+    return <ThreadPrimitive.Messages components={{ UserMessage, AssistantMessage }} />;
 }
 
+// ============ FOLLOW-UP COMPOSER ============
 function Composer() {
     return (
-        <div className="sticky bottom-0 p-4 bg-gradient-to-t from-[#1a1a1a] via-[#1a1a1a] to-transparent pt-8">
-            <div className="max-w-[42rem] mx-auto">
-                <ComposerPrimitive.Root className="flex items-center gap-2 p-2 rounded-full border border-[#3a3a3a] bg-[#242424] focus-within:border-[#20b8cd]/50 transition-all">
+        <div className="composer-wrapper">
+            <div className="composer-inner">
+                <ComposerPrimitive.Root className="composer-box">
                     <ComposerPrimitive.Input
                         placeholder="Ask a follow-up..."
-                        className="flex-1 min-h-[44px] px-4 py-2 bg-transparent text-[#f5f5f5] placeholder:text-[#808080] focus:outline-none resize-none"
+                        className="composer-input"
                     />
-                    <ComposerPrimitive.Send className="flex-shrink-0 w-10 h-10 rounded-full bg-[#20b8cd] text-[#1a1a1a] hover:bg-[#1aa3b5] transition-colors flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-                        <ArrowRight className="w-5 h-5" />
+                    <ComposerPrimitive.Send className="composer-send">
+                        <ArrowRight className="w-4 h-4" />
                     </ComposerPrimitive.Send>
                 </ComposerPrimitive.Root>
             </div>
@@ -284,39 +403,34 @@ function Composer() {
     );
 }
 
+// ============ MAIN COMPONENT ============
 export function AtheronChat() {
-    const handleNewChat = () => {
-        window.location.reload();
-    };
-
     return (
-        <ThreadPrimitive.Root
-            className="dark h-screen bg-[#1a1a1a] text-[#f5f5f5] flex flex-col relative"
-            style={{ ["--thread-max-width" as string]: "42rem" }}
-        >
-            {/* New Chat Button */}
-            <button
-                onClick={handleNewChat}
-                className="absolute top-4 right-4 z-10 p-2.5 rounded-xl bg-[#242424] border border-[#3a3a3a] text-[#808080] hover:text-[#20b8cd] hover:border-[#20b8cd]/50 transition-all"
-                title="New Chat"
-            >
-                <RotateCcw className="w-5 h-5" />
-            </button>
+        <>
+            <VideoBackground />
 
-            {/* Thread Content */}
-            <ThreadPrimitive.Viewport className="flex-1 overflow-y-auto">
-                <ThreadPrimitive.Empty>
-                    <WelcomeScreen />
-                </ThreadPrimitive.Empty>
-                <div className="px-4">
-                    <Messages />
-                </div>
-            </ThreadPrimitive.Viewport>
+            <div className="chat-container">
+                <ThreadPrimitive.Root className="h-full flex flex-col">
+                    {/* Header */}
+                    <div className="chat-header">
+                        <LogoHeader />
+                        <NewChatButton />
+                    </div>
 
-            {/* Follow-up Composer */}
-            <ThreadPrimitive.If running={false} empty={false}>
-                <Composer />
-            </ThreadPrimitive.If>
-        </ThreadPrimitive.Root>
+                    {/* Main Content */}
+                    <ThreadPrimitive.Viewport className="messages-viewport">
+                        <ThreadPrimitive.Empty>
+                            <WelcomeScreen />
+                        </ThreadPrimitive.Empty>
+                        <Messages />
+                    </ThreadPrimitive.Viewport>
+
+                    {/* Follow-up Input */}
+                    <ThreadPrimitive.If running={false} empty={false}>
+                        <Composer />
+                    </ThreadPrimitive.If>
+                </ThreadPrimitive.Root>
+            </div>
+        </>
     );
 }

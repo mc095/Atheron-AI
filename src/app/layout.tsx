@@ -13,12 +13,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Atheron - AI Space & Cosmos Assistant",
-  description: "Ask Atheron anything about the cosmos, satellite telemetry, and orbital mechanics. Your AI guide to space science and aerospace engineering.",
-  keywords: ["AI assistant", "space", "cosmos", "satellite", "orbital mechanics", "astronomy", "aerospace"],
+  title: "Athey - AI Space & Cosmos Assistant",
+  description: "Ask Athey anything about the cosmos, satellites, SpaceX, ISRO, and more. Real-time space data at your fingertips. Your AI guide to the universe.",
+  keywords: ["AI assistant", "space", "cosmos", "satellite tracking", "SpaceX", "ISRO", "NASA", "orbital mechanics", "astronomy", "ISS"],
+  icons: {
+    icon: "/logo.jpeg",
+    shortcut: "/logo.jpeg",
+    apple: "/logo.jpeg",
+  },
   openGraph: {
-    title: "Atheron - AI Space & Cosmos Assistant",
-    description: "Your AI guide to the cosmos, orbital mechanics, and satellite technology",
+    title: "Athey - AI Space & Cosmos Assistant",
+    description: "Real-time satellite tracking, SpaceX launches, and cosmic exploration with Athey",
     type: "website",
   },
 };

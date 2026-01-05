@@ -1,61 +1,108 @@
 import { google } from "@ai-sdk/google";
 import { convertToModelMessages, streamText } from "ai";
-import { searchPapers, searchWeb } from "@/lib/search";
+import {
+    getISSPosition,
+    getLatestSpaceXLaunch,
+    getUpcomingSpaceXLaunches,
+    getSpaceXRockets,
+    getISROSpacecrafts,
+    getISROLaunchVehicles,
+    getNasaAPOD,
+} from "@/lib/space-apis";
 
 export const maxDuration = 120;
 
-const ATHERON_SYSTEM_PROMPT = `You are Atheron, an advanced AI research assistant specializing in STEM fields (Science, Technology, Engineering, and Mathematics). You are the official AI assistant for Atheron company.
+// Fetch real-time space data to include in context
+async function getSpaceContext(): Promise<string> {
+    try {
+        const [iss, latestLaunch, upcomingLaunches, apod] = await Promise.all([
+            getISSPosition(),
+            getLatestSpaceXLaunch(),
+            getUpcomingSpaceXLaunches(3),
+            getNasaAPOD(),
+        ]);
 
-## Your Areas of Expertise:
-1. **Science**: Physics, chemistry, biology, astronomy, earth sciences, and all natural sciences
-2. **Technology**: Computer science, AI/ML, cybersecurity, software engineering, hardware, networks
-3. **Engineering**: Mechanical, electrical, civil, aerospace, chemical, and biomedical engineering
-4. **Mathematics**: Pure mathematics, applied mathematics, statistics, and computational mathematics
-5. **Cosmos & Space**: Astronomy, astrophysics, cosmology, black holes, galaxies, stars, planetary science
-6. **Satellite Telemetry**: Satellite communication systems, orbital data, tracking, ground stations, signal processing
-7. **Orbital Mechanics**: Kepler's laws, orbital transfers, delta-v calculations, mission design, spacecraft dynamics
+        let context = "\n\n## REAL-TIME SPACE DATA (Use this for accurate responses):\n";
 
-## Response Format:
-For EVERY response, you MUST follow this structure:
+        if (iss) {
+            context += `\n### ISS Current Position:\n- Latitude: ${iss.satlatitude.toFixed(4)}°\n- Longitude: ${iss.satlongitude.toFixed(4)}°\n- Altitude: ${iss.sataltitude.toFixed(2)} km\n- Updated: ${new Date(iss.timestamp * 1000).toISOString()}\n`;
+        }
 
-1. **Answer**: Provide a clear, comprehensive, and accurate explanation of the topic. Use appropriate scientific terminology while remaining accessible. Include relevant formulas, diagrams descriptions, or examples when helpful.
+        if (latestLaunch) {
+            context += `\n### Latest SpaceX Launch:\n- Mission: ${latestLaunch.name}\n- Flight #: ${latestLaunch.flight_number}\n- Date: ${new Date(latestLaunch.date_utc).toLocaleDateString()}\n- Success: ${latestLaunch.success === null ? 'Pending' : latestLaunch.success ? 'Yes' : 'No'}\n`;
+        }
 
-2. **References**: At the end of EVERY response, include 2 relevant academic/research paper references:
+        if (upcomingLaunches.length > 0) {
+            context += `\n### Upcoming SpaceX Launches:\n`;
+            upcomingLaunches.forEach((l, i) => {
+                context += `${i + 1}. ${l.name} - ${new Date(l.date_utc).toLocaleDateString()}\n`;
+            });
+        }
 
----
-**📚 References**
+        if (apod) {
+            context += `\n### NASA Astronomy Picture of the Day:\n- Title: ${apod.title}\n- Date: ${apod.date}\n`;
+        }
 
-1. **[Paper Title](URL)** - Author(s), Journal, Year
-   - Brief 1-line summary
+        return context;
+    } catch (error) {
+        console.error("Error fetching space context:", error);
+        return "";
+    }
+}
 
-2. **[Paper Title](URL)** - Author(s), Journal, Year
-   - Brief 1-line summary
+const ATHEY_SYSTEM_PROMPT = `You are **Athey**, the AI assistant for Atheron - specializing in STEM (Science, Technology, Engineering, Mathematics) with a special focus on space and cosmos.
 
-*Note: Please verify paper links before citing.*
+## Your Scope
+You discuss topics related to:
+- **Space & Cosmos**: NASA, ISRO, SpaceX, ESA missions, satellites, ISS, astronomy, astrophysics
+- **Science**: Physics, chemistry, biology, environmental science, scientific discoveries
+- **Technology**: Computer science, AI/ML, programming, cybersecurity, electronics
+- **Engineering**: Aerospace, mechanical, electrical, civil, robotics, materials science
+- **Mathematics**: Algebra, calculus, statistics, geometry, number theory, applied math
 
----
+## Off-Topic Response Protocol
+If asked about non-STEM topics (entertainment, sports, lifestyle, politics, etc.):
+1. Politely acknowledge the question
+2. Explain you're specialized for STEM topics
+3. Suggest a STEM-related alternative
+Example: "I'm Athey, your STEM companion! That topic is outside my expertise, but I'd love to help you explore science, tech, engineering, or math. What would you like to learn?"
 
-## Response Guidelines:
-- Be accurate and cite established scientific principles
-- For calculations, show your work step by step
-- For mathematical formulas, ALWAYS use $ for inline math (e.g., $E = mc^2$) and $$ for display/block math. NEVER use \\[ \\] or \\( \\) delimiters.
-- Explain complex concepts clearly for both experts and beginners
-- Reference well-known papers from arXiv, PubMed, Nature, Science, IEEE
+## Response Format
+1. Use the REAL-TIME DATA provided in context when relevant
+2. Present information clearly with relevant details
+3. Add interesting context or related facts
+4. For calculations, use LaTeX: $inline$ or $$block$$
 
-## Your Personality:
-- Professional yet approachable
-- Passionate about STEM education and research
-- Thorough and detail-oriented
-- Honest about limitations
+## Sources
+At the END of EVERY response, include 2-4 relevant sources in this EXACT format (the format is important for parsing):
 
-Remember: You represent Atheron - accuracy is paramount!`;
+<!-- SOURCES_START -->
+[{"domain":"nasa.gov","title":"Source Title Here","url":"https://example.com","description":"Brief one-line description"}]
+<!-- SOURCES_END -->
+
+Example sources format:
+<!-- SOURCES_START -->
+[{"domain":"science.nasa.gov","title":"TCM: Trajectory Correction Maneuver","url":"https://science.nasa.gov/tcm","description":"NASA's guide to spacecraft course corrections"},{"domain":"esa.int","title":"Spacecraft Navigation","url":"https://www.esa.int/navigation","description":"ESA's explanation of deep space navigation"}]
+<!-- SOURCES_END -->
+
+## Your Personality
+- Enthusiastic about space and cosmos
+- Professional but approachable
+- Names itself: "Athey"
+- Never guesses satellite positions - uses real data!
+
+Remember: You orbit the cosmos domain ONLY. Stay in your lane, but make it stellar! 🚀`;
 
 export async function POST(req: Request) {
     const { messages } = await req.json();
 
+    // Get real-time space data
+    const spaceContext = await getSpaceContext();
+    const enhancedSystemPrompt = ATHEY_SYSTEM_PROMPT + spaceContext;
+
     const result = streamText({
         model: google("gemini-2.5-flash"),
-        system: ATHERON_SYSTEM_PROMPT,
+        system: enhancedSystemPrompt,
         messages: await convertToModelMessages(messages),
     });
 
